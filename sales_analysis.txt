@@ -1,0 +1,200 @@
+sales +------------------+--------- | product_id | INTEGER | store_id | INTEGER | | customer_id | INTEGER | | promotion_id | INTEGER | | store_sales | DECIMAL | | store_cost | DECIMAL | | units_sold | DECIMAL | | transaction_date | DATE |
+
+products +------------------+--------- | product_id | INTEGER | | product_class_id | INTEGER | | brand_name | VARCHAR | | product_name | VARCHAR | | is_low_fat_flg | TINYINT | | is_recyclable_flg | TINYINT | | gross_weight | DECIMAL | | net_weight | DECIMAL |
+
+promotions | +------------------+---------+ | promotion_id | INTEGER| | promotion_name | VARCHAR | | media_type | VARCHAR | | cost | DECIMAL | | start_date | DATE | | end_date | DATE |
+
+product_classes +------------------+---------+ | product_class_id | INTEGER | | product_subcategory | VARCHAR | | product_category | VARCHAR | | product_department | VARCHAR | | product_family | VARCHAR |
+
+customers | +------------------+---------+ | customer_id | INTEGER| | first_name | VARCHAR | last_name | VARCHAR |
+
+Q1. what %age of products are both low fat and recycable . 
+
+select
+	sum(
+		case when is_low_fat = 1 and is_recyclable = 1 then 1 else 0 end
+	) * 100.0 / count(*) as percentage
+from product
+
+
+Q2. find top 5 products (by sales amount) having promotions
+
+select top 5 product_id from sales
+ where promotion_id is not null
+ group by product_id
+ order by sum(store_cost * units_sold) desc
+
+
+Q3. For each promotion id, what %age of sales happened on first and last day of the promotion 
+
+select s.promotion_id,
+ round((sum(case when s.transaction_date = (p.promo_start_date)
+            or s.transaction_date = (p.promo_end_date) then (store_cost * units_sold) else 0 end) * 100.0
+ / sum((store_cost * units_sold))),2)
+ from sales s inner join  promotion p on p.promotion_id = s.promotion_id
+ group by s.promotion_id
+
+
+Q4. Which product had the highest sales with promotions, give product_id, product_name and total sales amount.
+
+select s.product_id, p.product_name, sum (s.store_cost * s.units_sold)
+ from sales s, product p
+ where s.product_id = p.product_id and s.promotion_id is not null
+ group by s.product_id , p.product_name
+ order by sum (s.store_cost * s.units_sold) desc
+
+
+Q5. What are the top five (ranked in decreasing order) single-channel media types that correspond to the most money the grocery chain had spent on its promotional campaigns?
+
+select top 5 media_type
+from Promotions
+where media_type not like '%,%'
+group by media_type
+order by sum(cost) desc; 
+
+
+Q6. the proportion of valid sales that occurred on certain dates
+
+select
+	sum(
+		case when transaction_date = 'certain_date' then 1 end
+	)/count(*) as valid_sales
+from sales
+
+
+Q7. Manager want to analyze how the promotions on certain products are performing.
+find the percent of promoted sales for certain product?
+
+with prom_sale
+as
+(select
+    product_id,
+    sum(store_sales) as prom_sale
+from product prod
+join promotions prom
+on  prod.promotion_id = prom.promotion_id),
+tot_sale as (
+select
+    product_id,
+    sum(store_sales) as tot_sale
+from product prod
+)
+select
+     product_id,
+     prom_sale/tot_sale * 100
+from prom_sale ps
+join tot_sale ts
+on ps.product_id = ts.product_id
+where ps.product_id = 'certain product'
+
+OR
+Select s.product_id,
+sum(case when s.promotion id is not null then store_sales else 0 end) * 100 / sum(store_sales)
+As percentage_promoted_sales
+From sales s
+Where product_id = ‘1234’
+Group by s.product_id;
+
+
+
+Q8. Get the top3 product class_id by the total sales. 
+
+select top 3 p.product_class_name, sum(s.units_sold * s.store_cost) as total_sale
+from sales s, product p
+where p.product_id = s.product_id
+group by p.product_class_name
+order by sum(s.units_sold * s.store_cost) desc
+
+
+Q9. What brands have an average price above $3 and contain at least 2 different products?
+
+select brand_name
+from product
+group by brand_name
+having avg(price)>3 and count(distinct product_id) >= 2;
+
+
+Q10. what percent of our sales transactions had a valid promotion applied?
+
+select
+round(sum(case
+when promotion_id not null then 1
+else 0
+end)*100.0/count(*),2)
+from sales;
+
+
+Q11. what are the top 3 selling product classes by total sales?
+
+select p.product_class_id
+from
+sales s
+join product p
+on s.product_id = p.product_id
+group by p.product_class_id
+order by sum(p.price*s.units_sold) desc limit 3;
+
+
+Q.12 find out which customers have bought products from both the “Fort West" and the "Golden" brands
+
+select c.first_name, c.last_name
+from
+(select s.customer_id
+from product p
+join sales s
+on p.product_id = s.product_id
+where p.brand_name = 'Fort West' and p.brand_name = 'Golden')t
+join customers c
+on t.customer_id = c.customer_id;
+
+
+Q13. Display the most common name in the Student table
+
+select name, COUNT(name) AS MOST_FREQUENT
+from students
+GROUP BY name
+ORDER BY COUNT(name) DESC LIMIT 1;
+
+
+Q14. Select employee from departments where max salary of the department is 40k
+select e.eid from emp e
+where e.did in (
+select e.did
+from emp e
+inner join department d on d.dept_id =e.did
+group by 1
+having max(e.sal) =40000);
+
+
+Q15. Select employee assigned to projects
+
+select e.name from employees e inner join projects p on e.id = p.emp_id;
+
+
+Q16. Select employee which have the max salary in a given department
+
+select e.employee_id from employee e join department d on e.dept_id = d.id
+where e.salary = (select max(salary) from department where id = 'xyz') and e.dept_id = 'xyz';
+
+
+Q17. Select employee with second highest salary
+select e.name from employee e join department d on e.dept_id = d.id where e.salary =
+(select max(salary) from department where name = 'HR' and salary < (salect max(salary) from department where name = 'HR'))
+
+
+Q18. Select s.name from salesperson s join orders o on s.id = o.salesperson_id join customer c on o.customer_id = c.id where c.name = ’Samsonic’;
+
+
+Q19. Select name salesperson where id not in (select s.id from salesperson s join orders o on s.id = o.salesperson_id join customer c on o.customer_id = c.id Where c.name = ’Samsonic’);
+
+
+Q20. Select s.name from salesperson s join orders o on s.id = o.salesperson_id group by o.salesperson_id having count(o.number) >= 2;
+
+
+Q21. Select name, age from salesperson where salary >=100000
+
+
+Q22. Select s.name from salesperson s join orders o on s.id = o.salesperson_id group by o.salesperson_id having sum(amount) >1400;
+
+
+Q23. Select min(o.order_date) as earliest_order_date, max(o.order_date) as latest_order_date from customer c join orders o on c.id = o.cuatomer_id where c.name = ‘Samony’  group by o.cuatomer_id
